@@ -5,6 +5,58 @@ let currentBasemap = 'osm';
 let allLayers = [];
 let selectedFeatures = [];
 
+// ==================== Geolocation ====================
+function geolocateUser() {
+    if (!navigator.geolocation) {
+        alert('La géolocalisation n\'est pas supportée par ce navigateur.');
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        position => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            const accuracy = position.coords.accuracy;
+
+            // Center map on user location
+            map.setView([lat, lng], 15);
+
+            // Add a marker for user location
+            const userMarker = L.marker([lat, lng]).addTo(map)
+                .bindPopup(`Votre position<br>Latitude: ${lat.toFixed(6)}<br>Longitude: ${lng.toFixed(6)}<br>Précision: ${accuracy.toFixed(0)}m`)
+                .openPopup();
+
+            // Remove marker after 30 seconds
+            setTimeout(() => {
+                map.removeLayer(userMarker);
+            }, 30000);
+        },
+        error => {
+            let message = 'Erreur de géolocalisation: ';
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    message += 'Permission refusée par l\'utilisateur.';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    message += 'Position indisponible.';
+                    break;
+                case error.TIMEOUT:
+                    message += 'Timeout.';
+                    break;
+                default:
+                    message += 'Erreur inconnue.';
+                    break;
+            }
+            alert(message);
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 300000 // 5 minutes
+        }
+    );
+}
+
 // ==================== Initialize Map ====================
 function initMap() {
     // Create map
@@ -197,7 +249,9 @@ function setupNavigation() {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const page = link.getAttribute('data-page');
-            const pageContents = {
+            if (page) {
+                // Existing modal pages
+                const pageContents = {
                 home: `
                     <h3>Bienvenue sur SIG Sénégal</h3>
                     <p>Système d'Information Géographique du Sénégal permettant de visualiser et d'analyser les données territoriales du pays.</p>
@@ -279,6 +333,12 @@ function setupNavigation() {
             openModal(title[page] || page, pageContents[page] || '');
         });
     });
+
+    // Geolocation button
+    const geolocateBtn = document.getElementById('geolocate-btn');
+    if (geolocateBtn) {
+        geolocateBtn.addEventListener('click', geolocateUser);
+    }
 }
 
 function openModal(title, content) {
